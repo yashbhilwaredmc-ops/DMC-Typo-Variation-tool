@@ -2,6 +2,14 @@ import streamlit as st
 import csv
 from io import StringIO
 
+# Set page configuration with your DMC branding
+st.set_page_config(
+    page_title="DMC Typo Variation Tool",
+    page_icon="⌨️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 # Define adjacent keys (QWERTY layout)
 adjacent_keys = {
     'a': ['q', 'w', 's', 'z'],
@@ -74,8 +82,7 @@ def save_to_csv(typo_dict):
     return output.getvalue()
 
 # Streamlit UI
-st.set_page_config(page_title="Typo Generator", page_icon="⌨️")
-st.title("⌨️ Typo Generator Tool")
+st.title("⌨️ DMC Typo Variation Tool")
 
 st.markdown("""
 This tool generates common typographical errors for given keywords based on QWERTY keyboard layout.
@@ -96,29 +103,55 @@ if st.button("Generate Typos", type="primary"):
         with st.spinner("Generating typo variants..."):
             typo_data = generate_typos_for_keywords(keywords)
             
-        # Display results
-        st.success(f"Generated {sum(len(v) for v in typo_data.values())} typo variants for {len(keywords)} keywords!")
+        # Calculate total variants
+        total_variants = sum(len(v) for v in typo_data.values())
         
-        # Show preview
-        st.subheader("Preview")
-        for keyword, typos in list(typo_data.items())[:3]:  # Show first 3 keywords
-            with st.expander(f"Keyword: {keyword}"):
-                st.write(f"Typos: {', '.join(typos[:20])}{'...' if len(typos) > 20 else ''}")
+        # Display results
+        st.success(f"Generated {total_variants} typo variants for {len(keywords)} keywords!")
+        
+        # Show preview - FIXED: Now shows all variants
+        st.subheader("All Generated Typo Variants")
+        
+        # Create a container for each keyword with all its variants
+        for keyword, typos in typo_data.items():
+            with st.expander(f"Keyword: '{keyword}' - {len(typos)} variants"):
+                # Display all variants in a scrollable text area
+                st.text_area(
+                    f"All typo variants for '{keyword}':",
+                    value="\n".join([f"{i+1}. {typo}" for i, typo in enumerate(typos)]),
+                    height=min(300, 50 + (len(typos) * 20)),  # Dynamic height based on number of variants
+                    key=f"variants_{keyword}"
+                )
         
         # Download CSV
         csv_data = save_to_csv(typo_data)
         st.download_button(
-            label="Download CSV",
+            label="Download All as CSV",
             data=csv_data,
-            file_name="typo_variants.csv",
-            mime="text/csv"
+            file_name="dmc_typo_variants.csv",
+            mime="text/csv",
+            help="Download all generated typo variants as a CSV file"
         )
+        
+        # Show statistics
+        st.subheader("Statistics")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Keywords Processed", len(keywords))
+        with col2:
+            st.metric("Total Typo Variants", total_variants)
+        with col3:
+            avg_variants = total_variants / len(keywords) if keywords else 0
+            st.metric("Average Variants per Keyword", f"{avg_variants:.1f}")
+            
     else:
         st.warning("Please enter at least one keyword.")
 
 # Add some information about the tool
-with st.expander("About this tool"):
+with st.expander("About DMC Typo Variation Tool"):
     st.markdown("""
+    ## DMC Typo Variation Tool
+    
     This tool generates four types of typographical errors:
     1. **Omission**: Missing a character (e.g., "helo" instead of "hello")
     2. **Duplication**: Duplicating a character (e.g., "helllo" instead of "hello")
@@ -126,4 +159,9 @@ with st.expander("About this tool"):
     4. **Adjacent key substitution**: Replacing with nearby keyboard keys (e.g., "jello" instead of "hello")
     
     The tool uses a standard QWERTY keyboard layout to determine adjacent keys.
+    
+    ### Why showing all variants is important
+    Unlike the previous version that only showed the first 20 variants, this tool now displays
+    ALL generated variants for each keyword. This ensures you don't miss any potential typos
+    that might be relevant for your use case.
     """)
